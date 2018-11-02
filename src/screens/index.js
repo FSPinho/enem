@@ -1,13 +1,13 @@
 import Home from './Home'
-import Topics from './Topics'
-import Proof from './Proof'
 import Login from './Login'
-import Loved from './Loved'
+import LetterEditor from './LetterEditor'
+import LetterFinder from './LetterFinder'
+import LetterResponder from './LetterResponder'
 
 export {
     Home,
-    Topics,
-    Proof,
     Login,
-	Loved
+    LetterEditor,
+    LetterFinder,
+    LetterResponder
 }

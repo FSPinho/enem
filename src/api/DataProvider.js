@@ -2,7 +2,6 @@ import React, {Component} from 'react'
 import FireBase from 'react-native-firebase'
 import {Alert} from '../services'
 import NameUtils from "../services/NameUtils"
-import {Events} from "../constants/Analytics";
 
 const {Provider, Consumer} = React.createContext({
     data: undefined
@@ -16,6 +15,9 @@ class DataProvider extends Component {
 
         this.state = {
 
+            /** True if loaded at least once */
+            dirty: false,
+
             user: {
                 key: undefined,
                 name: undefined,
@@ -23,176 +25,46 @@ class DataProvider extends Component {
                 lastName: undefined,
                 email: undefined,
                 photo: undefined,
-
-                /** User data */
-                history: {
-                    lastQuestionIndex: 0,
-                    grade: 0.0,
-                    proofsCount: 0,
-                },
+                is_gnome: false,
+                has_letter: false,
+                has_letter_answer: false,
+                letter: undefined,
+                letter_answer: undefined
             },
             userLoading: false,
-            loveds: {},
-            lovedsLoading: false,
-            proofs: [],
-            proofsLoading: false,
-            proofsQuestions: [],
-            proofsQuestionsLoading: false,
-            proofsSubjects: {},
-            proofsSubjectsLoading: false,
 
-            /** True if loaded at least once */
-            dirty: false,
+            findLetterLoading: false,
 
-            /** Questions data */
-            subjects: [],
-            subjectsTimestamp: 0,
-            subjectsLoading: false,
-            questions: [],
-            questionsTimestamp: 0,
-            questionsLoading: false,
-            bancas: [],
-            bancasTimestamp: 0,
-            bancasLoading: false,
-
-            doUpdate: this.doUpdate,
-            doUpdateQuestions: this.doUpdateQuestions,
-            doUpdateUser: this.doUpdateUser,
-            doUpdateUserHistoryMeta: this.doUpdateUserHistoryMeta,
-            doSaveProof: this.doSaveProof,
-            doUpdateLoveds: this.doUpdateLoveds
+            doSetUser: this.doSetUser,
+            doSetUserLetter: this.doSetUserLetter,
+            doSetUserLetterAnswer: this.doSetUserLetterAnswer,
+            doTransformUserInGnome: this.doTransformUserInGnome,
+            doFindLetter: this.doFindLetter
         }
     }
 
     async componentDidMount() {
-        await this.doUpdate()
+        /**
+         * ...
+         * */
     }
 
     asyncSetState = async state =>
-        await new Promise(a => requestAnimationFrame(() => this.setState({...this.state, ...state}, a)))
+        await new Promise(a => this.setState({...this.state, ...state, dirty: true}, a))
 
-    doOrAlert = async (toDos, errorMessage) => {
+    doOrAlert = async (toDo, errorMessage) => {
         try {
-            for (let toDo of toDos) {
-                await toDo()
-            }
-            ;
+            await toDo()
         } catch (e) {
             !!errorMessage && Alert.showLongText(errorMessage)
-            console.warn('DataProvider:doOrAlert - Can\'t do tasks:', e)
+            console.warn('DataProvider:doOrAlert - Can\'t do task:', e)
         }
     }
 
-    doMapToList = async map => {
-        const list = []
-        map.docs.map(d => list.push({...d.data(), key: d.id}))
-        return list
-    }
-
-    doRemoveDuplicates = list => {
-        const map = {}
-        list.map(i => {
-            map[i.key] = i
-        })
-        return Object.keys(map).map(k => map[k])
-    }
-
-    doUpdate = async () => {
-        await this.asyncSetState({
-            subjectsLoading: true,
-            bancasLoading: true,
-            historyLoading: true
-        })
-
-        await this.doOrAlert([async () => {
-            console.log('DataProvider:doUpdate - Loading subject...')
-            const subjects = await this.doMapToList(
-                await FireBase.firestore()
-                    .collection('subjects-topics')
-                    .where('c', '>', 0)
-                    .orderBy('c')
-                    .get()
-            )
-
-            console.log(subjects)
-
-            subjects.map(s => {
-                s.o = Object.keys(s.o).map(key => ({...s.o[key], key}))
-                s.o.sort((a, b) => a.t.localeCompare(b.t))
-                s.o = s.o.filter(t => t.c > 10)
-            })
-            subjects.sort((a, b) => a.t.localeCompare(b.t))
-
-            console.log('DataProvider:doUpdate - Loading bancas...')
-            const bancas = []
-
-            console.log('DataProvider:doUpdate - Loading history...')
-            const history = []
-
-            console.log('DataProvider:doUpdate - Data downloaded!')
-
-            await this.asyncSetState({
-                subjects,
-                subjectsTimestamp: +new Date(),
-                bancas,
-                bancasTimestamp: +new Date(),
-                history,
-                historyTimestamp: +new Date(),
-            })
-        }], 'Oops, você está sem internet?')
-
-        await this.asyncSetState({
-            subjectsLoading: false,
-            bancasLoading: false,
-            historyLoading: false,
-            dirty: true,
-        })
-    }
-
-    doUpdateQuestions = async (s, t, l = 3) => {
-
-        console.log(s, t, l)
-
-        await this.asyncSetState({questionsLoading: true})
-
-        await this.doOrAlert([
-            async () => {
-                const baseQuery = await FireBase.firestore()
-                    .collection('questions')
-                    .where('s', '==', s)
-                    .where('t', '==', t)
-
-                const {history} = this.state.user
-
-                let questions = await this.doMapToList(
-                    await baseQuery.orderBy('x').startAfter(history.lastQuestionIndex).limit(l).get()
-                )
-
-                if (questions.length < l) {
-                    const offset = l - questions.length
-                    console.log("DataProvider:doUpdateQuestions - Retrieved questions are not enough, getting more...", offset)
-                    const questionsOffset = await this.doMapToList((await baseQuery.orderBy('x').limit(offset).get()))
-                    await this.doUpdateUserHistory({
-                        lastQuestionIndex: (questionsOffset[questionsOffset.length - 1] || questions[questions.length - 1] || []).x || history.lastQuestionIndex
-                    })
-                    questions = this.doRemoveDuplicates([...questions, ...questionsOffset])
-                } else {
-                    await this.doUpdateUserHistory({
-                        lastQuestionIndex: questions[questions.length - 1].x
-                    })
-                }
-
-                await this.asyncSetState({questions})
-            }
-        ], 'Não foi possível baixar as questões!')
-
-        await this.asyncSetState({questionsLoading: false})
-    }
-
-    doUpdateUser = async ({user}) => {
+    doSetUser = async ({user}) => {
         await this.asyncSetState({userLoading: true})
 
-        await this.doOrAlert([
+        await this.doOrAlert(
             async () => {
                 const _user = {
                     key: user.uid,
@@ -201,21 +73,14 @@ class DataProvider extends Component {
                     lastName: NameUtils.getLastName(user),
                     email: user.email,
                     photo: user.photoURL,
-
-                    /** User data */
-                    history: {
-                        lastQuestionIndex: 0,
-                        grade: 0.0,
-                        proofsCount: 0,
-                    }
                 }
 
-                console.log("DataProvider:doUpdateUser - Sending current user details to analytics...")
+                console.log("DataProvider:doSetUser - Sending current user details to analytics...")
                 FireBase.analytics().setUserId(_user.key)
                 FireBase.analytics().setUserProperties({
-                    te_name: _user.name,
-                    te_email: _user.email,
-                    te_photo: _user.photo,
+                    le_name: _user.name,
+                    le_email: _user.email,
+                    le_photo: _user.photo,
                 })
 
                 const userRef = FireBase.firestore().collection('users').doc(user.uid)
@@ -224,6 +89,11 @@ class DataProvider extends Component {
                 if (!snapshot.exists) {
                     await userRef.set({
                         ..._user,
+                        is_gnome: false,
+                        has_letter: false,
+                        has_letter_answer: false,
+                        letter: undefined,
+                        letter_answer: undefined,
                         creationTimestamp: +new Date(),
                         creationTimestampReverse: -+new Date(),
                         lastAccessTimestamp: +new Date(),
@@ -232,10 +102,6 @@ class DataProvider extends Component {
                 } else {
                     await userRef.update({
                         ..._user,
-                        history: {
-                            ...user.history,
-                            ...snapshot.data().history,
-                        },
                         lastAccessTimestamp: +new Date(),
                         lastAccessTimestampReverse: -+new Date(),
                     })
@@ -243,188 +109,124 @@ class DataProvider extends Component {
 
                 const __user = await userRef.get()
                 await this.asyncSetState({user: __user.data()})
-            }
-        ], 'Oops, verifique sua conexão!')
 
-        await this.doUpdateLoveds()
-        await this.doUpdateProofsSubjects()
+                userRef.onSnapshot(async doc => {
+                    console.log("DataProvider:doSetUser - Updating user automatically...")
+                    await this.asyncSetState({user: doc.data()})
+                })
+            },
+            'Oops, verifique sua conexão!'
+        )
 
         await this.asyncSetState({userLoading: false})
     }
 
-    doUpdateLoveds = async (loveds = {}) => {
-        await this.asyncSetState({lovedsLoading: true})
-
-        await this.doOrAlert([
-            async () => {
-                const lovedsRef = FireBase.firestore()
-                    .collection('users')
-                    .doc(this.state.user.key)
-                    .collection('loveds')
-
-                for (let k of Object.keys(loveds)) {
-                    console.log("DataProvider:doUpdateLoveds - Updating:", k, loveds[k])
-                    await lovedsRef.doc(k).set({loved: loveds[k]})
-                    FireBase.analytics().logEvent(Events.TenderToggleLoved, {item_key: k, is_loved: loveds[k]})
-                }
-
-                const lovedsMap = {}
-                const lovedsSnapshot = await lovedsRef.get()
-                lovedsSnapshot.forEach(snapshot => {
-                    lovedsMap[snapshot.id] = !!snapshot.data() && snapshot.data().loved
-                })
-
-                this.asyncSetState({
-                    loveds: lovedsMap
-                })
-            }
-        ], Object.keys(loveds).length ? 'Não foi possível favoritar este item. Verifique sua conexão!' : undefined)
-
-        await this.asyncSetState({lovedsLoading: false})
-    }
-
-    doUpdateProofsSubjects = async (proofsSubjects = {}) => {
-        await this.asyncSetState({proofsSubjectsLoading: true})
-
-        console.log('DataProvider:doUpdateProofsSubjects - Updating proofs...')
-
-        await this.doOrAlert([
-            async () => {
-                const proofsSubjectsRef = FireBase.firestore()
-                    .collection('users')
-                    .doc(this.state.user.key)
-                    .collection('subjects')
-
-                for (let k of Object.keys(proofsSubjects)) {
-                    console.log("DataProvider:doUpdateProofsSubjects - Updating:", k, proofsSubjects[k])
-                    await proofsSubjectsRef.doc(k).set({...proofsSubjects[k], proofsTopics: undefined})
-
-                    for (let tk of Object.keys(proofsSubjects[k].proofsTopics)) {
-                        console.log("DataProvider:doUpdateProofsSubjects - Updating topic:", tk, proofsSubjects[k].proofsTopics[tk])
-                        await proofsSubjectsRef.doc(k).collection('topics').doc(tk).set({...proofsSubjects[k].proofsTopics[tk]})
-                    }
-                }
-
-                const proofsSubjectsMap = {}
-                const proofsSubjectsSnapshot = await proofsSubjectsRef.get()
-                proofsSubjectsSnapshot.forEach(snapshot => {
-                    proofsSubjectsMap[snapshot.id] = snapshot.data()
-                    proofsSubjectsMap[snapshot.id].proofsTopics = {}
-                })
-
-                for (let k of Object.keys(proofsSubjectsMap)) {
-                    if (proofsSubjectsMap[k].proofsCount) {
-                        console.log('DataProvider:doUpdateProofsSubjects - Updating subject topics proofs...')
-
-                        const proofsTopicsSnapshot = await proofsSubjectsRef.doc(k).collection('topics').get()
-                        proofsTopicsSnapshot.forEach(snapshot => {
-                            proofsSubjectsMap[k].proofsTopics[snapshot.id] = snapshot.data()
-                        })
-                    } else {
-                        console.log('DataProvider:doUpdateProofsSubjects - Skipping subject topics proofs, there are no proofs!')
-                    }
-                }
-
-                await this.asyncSetState({
-                    proofsSubjects: proofsSubjectsMap
-                })
-            }
-        ])
-
-        await this.asyncSetState({proofsSubjectsLoading: false})
-    }
-
-    doUpdateUserHistory = async (history = {}) => {
-        if (!this.state.user)
-            return
-
-        console.log("DataProvider:doUpdateUserHistory - Updating history", this.state.user.history, history)
-
+    doSetUserLetter = async ({letter}) => {
         await this.asyncSetState({userLoading: true})
 
-        await this.doOrAlert([
+        await this.doOrAlert(
             async () => {
-                const userRef = FireBase.firestore()
-                    .collection('users')
-                    .doc(this.state.user.key)
-
-                await userRef.update({
-                    history: {
-                        ...this.state.user.history,
-                        ...history,
+                const _user = {
+                    ...this.state.user,
+                    has_letter: true,
+                    timestamp: +new Date(),
+                    letter: {
+                        ...this.state.user.letter,
+                        ...letter
                     }
-                })
-                await this.asyncSetState({
-                    user: (await userRef.get()).data()
-                })
-            }
-        ], 'Oops. Algo de errado aconteceu!')
+                }
+
+                console.log("DataProvider:doSetUserLetter - Sending user's letter to firebase...")
+
+                const userRef = FireBase.firestore().collection('users').doc(_user.key)
+                await userRef.update(_user)
+                await this.asyncSetState({user: _user})
+
+                Alert.showLongText("Carta enviada!")
+            },
+            'Oops, será que você está sem internet?'
+        )
 
         await this.asyncSetState({userLoading: false})
     }
 
-    doSaveProof = async ({proof, questions}) => {
-        if (!this.state.user) {
-            return
-        }
+    doSetUserLetterAnswer = async ({letterAnswer, user}) => {
+        await this.asyncSetState({userLoading: true})
 
-        if (isNaN(proof.g)) {
-            console.log("DataProvider:doSaveProof - Can't save proof, invalid grade!")
-            return
-        }
-
-        await this.asyncSetState({proofsLoading: true, proofsQuestionsLoading: true})
-
-        await this.doOrAlert([
-
+        await this.doOrAlert(
             async () => {
-
-                const proofsRef = FireBase.firestore()
-                    .collection('users')
-                    .doc(this.state.user.key)
-                    .collection('proofs')
-
-                await proofsRef.add(proof)
-
-                const questionsRef = FireBase.firestore()
-                    .collection('users')
-                    .doc(this.state.user.key)
-                    .collection('questions')
-
-                for (let k of Object.keys(questions)) {
-                    await questionsRef.doc(k).set(questions[k])
+                const _user = {
+                    letter_answer: {
+                        ...letterAnswer
+                    },
+                    has_letter_answer: true,
                 }
 
-                await this.doUpdateUserHistory({
-                    grade: this.state.user.history.grade + proof.g,
-                    proofsCount: this.state.user.history.proofsCount + 1,
-                })
+                console.log("DataProvider:doSetUserLetterAnswer - Sending user's letter answer to firebase...")
 
-                const existingProofSubject = this.state.proofsSubjects[proof.s] || {grade: 0, proofsCount: 0}
-                let existingProofTopic = {grade: 0, proofsCount: 0}
+                const userRef = FireBase.firestore().collection('users').doc(user.key)
+                await userRef.update(_user)
+                Alert.showLongText("Resposta enviada!")
+            },
+            'Oops, será que você está sem internet?'
+        )
 
-                if (this.state.proofsSubjects[proof.s])
-                    if (this.state.proofsSubjects[proof.s].proofsTopics[proof.t])
-                        existingProofTopic = this.state.proofsSubjects[proof.s].proofsTopics[proof.t]
+        await this.asyncSetState({userLoading: false})
+    }
 
+    doTransformUserInGnome = async () => {
+        await this.asyncSetState({userLoading: true})
 
-                await this.doUpdateProofsSubjects({
-                    [proof.s]: {
-                        grade: existingProofSubject.grade + proof.g,
-                        proofsCount: existingProofSubject.proofsCount + 1,
-                        proofsTopics: {
-                            [proof.t]: {
-                                grade: existingProofTopic.grade + proof.g,
-                                proofsCount: existingProofTopic.proofsCount + 1,
-                            }
-                        }
+        if (!this.state.user.is_gnome)
+            await this.doOrAlert(
+                async () => {
+                    const _user = {
+                        ...this.state.user,
+                        is_gnome: true,
                     }
+
+                    console.log("DataProvider:doTransformUserInGnome - Transforming user in a gnome...")
+
+                    const userRef = FireBase.firestore().collection('users').doc(_user.key)
+                    await userRef.update(_user)
+                    await this.asyncSetState({user: _user})
+                    FireBase.analytics().setUserProperty('le_is_gnome', '1')
+                    Alert.showLongText("Agora você é um gnomo!")
+                },
+                'Oops, será que você está sem internet?'
+            )
+
+        await this.asyncSetState({userLoading: false})
+    }
+
+    doFindLetter = async (offset = 0) => {
+        await this.asyncSetState({findLetterLoading: true})
+        let user = null
+
+        await this.doOrAlert(
+            async () => {
+                console.log("DataProvider:doFindLetter - Searching letter...")
+
+                const userRef = FireBase.firestore().collection('users')
+                    .orderBy('timestamp')
+                    .startAfter(offset)
+                    .where('has_letter', '==', true)
+                    .where('has_letter_answer', '==', false)
+                    .limit(2)
+                const snapshot = await userRef.get()
+                snapshot.forEach((ss) => {
+                    if (user === null && ss.id !== this.state.user.key)
+                        user = {...ss.data(), key: ss.id}
                 })
 
-            }
-        ], 'Não foi possível salvar seu resultado. Verifique sua conexão!')
+                console.log("DataProvider:doFindLetter - letter found:", user)
 
-        await this.asyncSetState({proofsLoading: false, proofsQuestionsLoading: false})
+            },
+            'Oops, será que você está sem internet?'
+        )
+
+        await this.asyncSetState({findLetterLoading: false})
+        return user
     }
 
     render() {

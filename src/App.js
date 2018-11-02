@@ -4,6 +4,7 @@ import FireBase from 'react-native-firebase'
 import RootNavigation from "./navigation/RootNavigation";
 import DataProvider from "./api/DataProvider";
 import SplashScreen from 'react-native-splash-screen'
+import Snow from "./components/Snow";
 
 console.disableYellowBox = true;
 
@@ -48,7 +49,7 @@ export default class App extends Component {
         /**
          * Initializing Firebase Admob
          * */
-        FireBase.admob().initialize('ca-app-pub-5594222713152935~2780422532')
+        FireBase.admob().initialize('ca-app-pub-5594222713152935~1157666327')
 
         /**
          * Hiding splash screen
@@ -67,7 +68,9 @@ export default class App extends Component {
         return (
             <ThemeProvider>
                 <DataProvider>
-                    <RootNavigation/>
+                    <Snow>
+                        <RootNavigation/>
+                    </Snow>
                 </DataProvider>
             </ThemeProvider>
         );

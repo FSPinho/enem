@@ -35,13 +35,13 @@ class Login extends React.Component {
             const data = await GoogleSignin.signInSilently()
             const credential = firebase.auth.GoogleAuthProvider.credential(data.idToken, data.accessToken)
             const currentUser = await firebase.auth().signInAndRetrieveDataWithCredential(credential)
-            await this.props.data.doUpdateUser(currentUser)
+            await this.props.data.doSetUser(currentUser)
 
-            FireBase.analytics().logEvent(Events.TenderSignIn)
+            FireBase.analytics().logEvent(Events.LetterSignIn)
             this.props.navigation.navigate(Routes.Home)
         } catch (e) {
             console.warn("Login:componentDidMount - SignInSilently login error:", e);
-            FireBase.analytics().logEvent(Events.TenderOpenLogin)
+            FireBase.analytics().logEvent(Events.LetterOpenLogin)
         }
         await this.changeLoading(false)
     }
@@ -53,9 +53,9 @@ class Login extends React.Component {
             const data = await GoogleSignin.signIn()
             const credential = firebase.auth.GoogleAuthProvider.credential(data.idToken, data.accessToken)
             const currentUser = await firebase.auth().signInAndRetrieveDataWithCredential(credential)
-            this.props.data.doUpdateUser(currentUser)
+            this.props.data.doSetUser(currentUser)
 
-            FireBase.analytics().logEvent(Events.TenderSignIn)
+            FireBase.analytics().logEvent(Events.LetterSignIn)
             this.props.navigation.navigate(Routes.Home)
         } catch (e) {
             console.warn(e);

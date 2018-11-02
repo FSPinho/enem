@@ -331,7 +331,7 @@ Object.keys(_colors).map(k => {
         colors[`${key}Text`] = contrast
         colors[`${key}TextPrimary`] = `rgba(${r}, ${g}, ${b}, .87)`
         colors[`${key}TextSecondary`] = `rgba(${r}, ${g}, ${b}, .60)`
-        colors[`${key}TextDisabled`] = `rgba(${r}, ${g}, ${b}, .38)`
+        colors[`${key}TextDisabled`] = `rgba(${r}, ${g}, ${b}, .12)`
     })
 })
 

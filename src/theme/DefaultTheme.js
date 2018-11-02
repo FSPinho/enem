@@ -2,17 +2,17 @@ import Palette from "./Palette";
 
 export default {
     palette: {
-        primary: Palette.Orange,
-        primaryText: Palette.Orange500Text,
-        primaryTextPrimary: Palette.Orange500TextPrimary,
-        primaryTextSecondary: Palette.Orange500TextSecondary,
-        primaryTextDisabled: Palette.Orange500TextDisabled,
+        primary: Palette.Red,
+        primaryText: Palette.Red500Text,
+        primaryTextPrimary: Palette.Red500TextPrimary,
+        primaryTextSecondary: Palette.Red500TextSecondary,
+        primaryTextDisabled: Palette.Red500TextDisabled,
 
-        accent: Palette.Indigo,
-        accentText: Palette.Indigo500Text,
-        accentTextPrimary: Palette.Indigo500TextPrimary,
-        accentTextSecondary: Palette.Indigo500TextSecondary,
-        accentTextDisabled: Palette.Indigo500TextDisabled,
+        accent: Palette.Green,
+        accentText: Palette.Green500Text,
+        accentTextPrimary: Palette.Green500TextPrimary,
+        accentTextSecondary: Palette.Green500TextSecondary,
+        accentTextDisabled: Palette.Green500TextDisabled,
 
         backgroundPrimary: Palette.White,
         backgroundPrimaryText: Palette.WhiteText,

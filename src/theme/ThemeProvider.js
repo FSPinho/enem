@@ -19,7 +19,7 @@ class ThemeProvider extends Component {
         super(props)
 
         this.state = {
-			light: true,
+            light: true,
             theme: LightTheme,
             themeAnimationScale: new Animated.Value(0),
             themeAnimationOpacity: new Animated.Value(1),
@@ -31,21 +31,26 @@ class ThemeProvider extends Component {
         await new Promise(a => requestAnimationFrame(() => this.setState({...this.state, ...state}, a)))
 
     async componentDidMount() {
-        console.log(await AsyncStorage.getAllKeys(), await AsyncStorage.getItem("te:theme"))
-        const light = (await AsyncStorage.getItem("te:theme")) === 'light'
-        await this.asyncSetState({light: light, theme: light ? LightTheme : DarkTheme})
+        try {
+            console.log(await AsyncStorage.getAllKeys(), await AsyncStorage.getItem("le:theme"))
+            const light = (await AsyncStorage.getItem("le:theme")) === 'light'
+            await this.asyncSetState({light: light, theme: light ? LightTheme : DarkTheme})
+        } catch (e) {
+            console.log("ThemeProvider:componentDidMount - Can't get previous config. Setting to light theme.")
+            await this.asyncSetState({light: true, theme: LightTheme})
+        }
     }
 
     doEnableDark = async () => {
-        await AsyncStorage.setItem("te:theme", 'dark')
+        await AsyncStorage.setItem("le:theme", 'dark')
         await this.doChangeTheme(DarkTheme)
-        FireBase.analytics().logEvent(Events.TenderThemeEnableDark)
+        FireBase.analytics().logEvent(Events.LetterThemeEnableDark)
     }
 
     doEnableLight = async () => {
-        await AsyncStorage.setItem("te:theme", 'light')
+        await AsyncStorage.setItem("le:theme", 'light')
         await this.doChangeTheme(LightTheme)
-        FireBase.analytics().logEvent(Events.TenderThemeEnableLight)
+        FireBase.analytics().logEvent(Events.LetterThemeEnableLight)
     }
 
     doChangeTheme = async (theme) => {
@@ -57,10 +62,10 @@ class ThemeProvider extends Component {
 
         await new Promise(a => {
             Animated.sequence([
-				Animated.parallel([
-	                Animated.timing(this.state.themeAnimationScale, {toValue: 0, duration: 0}),
-	                Animated.timing(this.state.themeAnimationOpacity, {toValue: 0, duration: 0}),
-	            ]),
+                Animated.parallel([
+                    Animated.timing(this.state.themeAnimationScale, {toValue: 0, duration: 0}),
+                    Animated.timing(this.state.themeAnimationOpacity, {toValue: 0, duration: 0}),
+                ]),
                 Animated.parallel([
                     Animated.timing(
                         this.state.themeAnimationScale,
@@ -111,30 +116,31 @@ class ThemeProvider extends Component {
         ]).start()
     }
 
-	doToggleTheme = async () => {
-		if(this.state.light) {
-			await this.asyncSetState({light: false})
-			await this.doEnableDark()
-		}
-		else {
-			await this.asyncSetState({light: true})
-			await this.doEnableLight()
-		}
-	}
+    doToggleTheme = async () => {
+        if (this.state.light) {
+            await this.asyncSetState({light: false})
+            await this.doEnableDark()
+        }
+        else {
+            await this.asyncSetState({light: true})
+            await this.doEnableLight()
+        }
+    }
 
     render() {
 
         return (
             <Provider value={{
                 theme: this.state.theme,
-				light: this.state.light,
+                light: this.state.light,
                 doEnableDark: this.doEnableDark,
                 doEnableLight: this.doEnableLight,
-				doToggleTheme: this.doToggleTheme
+                doToggleTheme: this.doToggleTheme
             }}>
                 <StatusBar
                     barStyle={this.state.theme.palette.statusBarStyle}
                     backgroundColor={this.state.theme.palette.statusBar}/>
+
                 {this.props.children}
 
                 <Animated.View

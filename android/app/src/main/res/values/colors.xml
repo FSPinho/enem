@@ -3,7 +3,7 @@
     <color name="status_bar">#F5F5F5</color>
     <color name="status_bar_dark">#212121</color>
 
-    <color name="primary">#ff9800</color>
-    <color name="primary_dark">#f57c00</color>
-    <color name="accent">#536dfe</color>
+    <color name="primary">#F44336</color>
+    <color name="primary_dark">#D32F2F</color>
+    <color name="accent">#D32F2F</color>
 </resources>
