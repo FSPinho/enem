@@ -94,7 +94,7 @@ class Snow extends React.Component {
 
                 {
                     !!data.user.key && (
-                        <Box paddingSmall paper primary centralize>
+                        <Box paddingSmall primary centralize style={{borderRadius: 0, elevation: 8}}>
                             <Box fitAbsolute centralize>
                                 <Text>Carregando...</Text>
                             </Box>

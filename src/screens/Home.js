@@ -1,5 +1,5 @@
 import React from 'react'
-import {StyleSheet} from 'react-native'
+import {StyleSheet, Image} from 'react-native'
 import {withTheme} from "../theme";
 import withData from "../api/withData";
 import Loading from "../components/Loading";
@@ -53,22 +53,24 @@ class Home extends React.Component {
 
                             <Box paper primary column>
 
-                                <Box style={styles.cardMedia}
-                                     color={theme.palette.primary}
-                                     padding
-                                     alignEnd>
+                                <Box>
+                                    <Image style={styles.cardMedia}
+                                           source={require('../resources/images/banner-01.png')}/>
+                                </Box>
+                                <Box padding column>
                                     <Text
                                         weight={'700'}
-                                        size={28}
-                                        color={theme.palette.primaryText}>
+                                        size={20}
+                                        color={theme.palette.primary}>
                                         {
                                             hasAnswer ? 'Sua carta foi respondida!'
                                                 : hasLetter ? 'Sua carta foi enviada!'
                                                 : 'Escreva uma carta para o papai noel'
                                         }
                                     </Text>
-                                </Box>
-                                <Box padding column>
+
+                                    <Spacer/>
+
                                     {
                                         !!hasAnswer && (
                                             <Text weight={'900'} secondary>O Gnomo {answer.name} respondeu:</Text>
@@ -82,33 +84,36 @@ class Home extends React.Component {
                                         }
                                     </Text>
                                 </Box>
-                                {!hasAnswer && <Line/>}
-                                {!hasAnswer && <Box paddingSmall justifyEnd>
+                                <Line/>
+                                <Box paddingSmall justifyEnd>
                                     <Button flat primary
                                             onPress={this._doOpenLetterEditor}
                                             children={
-                                                hasLetter ? 'EDITAR CARTA'
+                                                hasAnswer ? 'ESCREVER OUTRA CARTA'
+                                                    : hasLetter ? 'EDITAR CARTA'
                                                     : 'ESCREVER CARTA'
                                             }/>
-                                </Box>}
+                                </Box>
                             </Box>
 
                             <Spacer vertical large/>
 
                             <Box paper primary column>
 
-                                <Box style={styles.cardMedia}
-                                     color={theme.palette.primary}
-                                     padding
-                                     alignEnd>
+                                <Box>
+                                    <Image style={styles.cardMedia}
+                                           source={require('../resources/images/banner-02.png')}/>
+                                </Box>
+                                <Box padding column>
                                     <Text
                                         weight={'700'}
-                                        size={28}
-                                        color={theme.palette.primaryText}>
+                                        size={20}
+                                        color={theme.palette.primary}>
                                         {isGnome ? 'Ajudar a responder cartas' : 'Quero ser um Gnomo oficial do Papai Noel'}
                                     </Text>
-                                </Box>
-                                <Box padding>
+
+                                    <Spacer/>
+
                                     <Text secondary>
                                         {isGnome ? 'Cumpra seu papel como Gnomo e ajude a responder cartas!'
                                             : 'Os Gnomos recebem muitas mensagens todo ano. Torne-se um deles e ajude a responder cartas =D'}
@@ -117,7 +122,8 @@ class Home extends React.Component {
                                 <Line/>
                                 <Box paddingSmall justifyEnd>
                                     <Button onPress={this._doOpenLetterFinder}
-                                            flat primary children={isGnome ? 'RESPONDER CARTAS' : 'ME TORNAR UM GNOMO'}/>
+                                            flat primary
+                                            children={isGnome ? 'RESPONDER CARTAS' : 'ME TORNAR UM GNOMO'}/>
                                 </Box>
 
                             </Box>
@@ -132,7 +138,8 @@ class Home extends React.Component {
 
 const styles = theme => StyleSheet.create({
     cardMedia: {
-        height: 128,
+        height: 162,
+        flex: 1,
         borderTopLeftRadius: theme.metrics.borderRadius,
         borderTopRightRadius: theme.metrics.borderRadius,
     }

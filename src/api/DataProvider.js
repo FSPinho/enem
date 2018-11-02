@@ -41,12 +41,24 @@ class DataProvider extends Component {
             doTransformUserInGnome: this.doTransformUserInGnome,
             doFindLetter: this.doFindLetter
         }
+
+        this.unsubscribers = []
     }
 
     async componentDidMount() {
         /**
          * ...
          * */
+    }
+
+    componentWillUnmount() {
+
+    }
+
+    reset = () => {
+        this.unsubscribers.map(u => u())
+        this.unsubscribers = []
+        this.setState({user: {key: undefined}})
     }
 
     asyncSetState = async state =>
@@ -110,10 +122,11 @@ class DataProvider extends Component {
                 const __user = await userRef.get()
                 await this.asyncSetState({user: __user.data()})
 
-                userRef.onSnapshot(async doc => {
+                this.unsubscribers.push(userRef.onSnapshot(async doc => {
                     console.log("DataProvider:doSetUser - Updating user automatically...")
-                    await this.asyncSetState({user: doc.data()})
-                })
+                    if (this.state.user.key === doc.id)
+                        await this.asyncSetState({user: doc.data()})
+                }))
             },
             'Oops, verifique sua conexão!'
         )
@@ -129,6 +142,7 @@ class DataProvider extends Component {
                 const _user = {
                     ...this.state.user,
                     has_letter: true,
+                    has_letter_answer: false,
                     timestamp: +new Date(),
                     letter: {
                         ...this.state.user.letter,

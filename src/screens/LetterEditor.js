@@ -27,9 +27,10 @@ class LetterEditor extends React.Component {
         console.log("Home:componentDidMount - Sending current screen to analytics...")
         FireBase.analytics().logEvent(Events.LetterOpenLetterEditor)
 
-        this.setState({
-            ...this.props.data.user.letter
-        })
+        if (!this.props.data.user.has_letter_answer)
+            this.setState({
+                ...this.props.data.user.letter
+            })
     }
 
     _doChangeField = (field, value) =>
@@ -107,7 +108,7 @@ class LetterEditor extends React.Component {
                                 <Line/>
                                 <Box padding>
                                     <Text secondary>
-                                        Fique esperto! Os Gnomos do Papai Noel podem responder sua carta a qualqer
+                                        Fique esperto! Os Gnomos do Papai Noel podem responder sua carta a qualquer
                                         momento =)
                                     </Text>
                                 </Box>
