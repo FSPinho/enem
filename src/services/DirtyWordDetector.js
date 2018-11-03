@@ -306,3 +306,7 @@ XANINHA`.split('\n')
 export const hasDirtyWords = (text = '') => {
     return _dirtyWords.filter(w => new RegExp(`(^|\\s)${w.replace('+', '\\+')}($|\\s)`, 'ig').test(text))
 }
+
+export default {
+    hasDirtyWords
+}

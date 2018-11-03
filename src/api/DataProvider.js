@@ -18,229 +18,384 @@ class DataProvider extends Component {
             /** True if loaded at least once */
             dirty: false,
 
-            user: {
+            /**
+             * Personal Info
+             * */
+            profile: {
                 key: undefined,
                 name: undefined,
                 firstName: undefined,
                 lastName: undefined,
                 email: undefined,
-                photo: undefined,
-                is_gnome: false,
-                has_letter: false,
-                has_letter_answer: false,
-                letter: undefined,
-                letter_answer: undefined
+                photo: undefined
+
             },
-            userLoading: false,
+            profileLoading: false,
+            profileVersion: 0,
 
-            findLetterLoading: false,
+            /**
+             * Proof info
+             * */
+            proof: {
+                /** Should be the same user key */
+                key: undefined,
 
-            doSetUser: this.doSetUser,
-            doSetUserLetter: this.doSetUserLetter,
-            doSetUserLetterAnswer: this.doSetUserLetterAnswer,
-            doTransformUserInGnome: this.doTransformUserInGnome,
-            doFindLetter: this.doFindLetter
+                /** First day */
+                firstColor: undefined,
+
+                /** Second day */
+                secondColor: undefined,
+            },
+            proofLoading: false,
+            proofVersion: 0,
+
+            /**
+             * Proof answers
+             */
+            proofAnswers: {
+                // key: {
+                //     key
+                //     questionKey
+                //     questionDay
+                //     userKey
+                //     answerLetter
+                // }
+            },
+            proofAnswersLoading: false,
+            proofAnswersVersion: 0,
+
+            /**
+             * General proof info
+             * */
+            generalProof: {
+                /** Overall users status */
+                /** Unused */
+                userCount: 0,
+                acceptedCount: 0,
+                colors: []
+            },
+            generalProofLoading: false,
+            generalProofVersion: 0,
+
+            /**
+             * General proof answers
+             */
+            generalProofAnswers: {
+                // key: {
+                //     key
+                //     questionKey
+                //     questionDay
+                //     correctLetter
+                //     counts: { a: x, b: y }
+                // }
+            },
+            generalProofAnswersLoading: false,
+            generalProofAnswersVersion: 0,
+
+            generalSettings: {
+                adsEnabled: false,
+            },
+            generalSettingsLoading: false,
+            generalSettingsVersion: 0,
+
+            doGetProfile: this._doGetProfile,
+            doGetProof: this._doGetProof,
+            doUpdateProof: this._doUpdateProof,
+            doGetProofAnswers: this._doGetProofAnswers,
+            doSaveProofAnswer: this._doSaveProofAnswer,
+            doGetGeneralProof: this._doGetGeneralProof,
+            doGetGeneralProofAnswers: this._doGetGeneralProofAnswers,
+            doGetGeneralSettings: this._doGetGeneralSettings,
         }
 
-        this.unsubscribers = []
+        this.unsubscribers = {}
+    }
+
+    _removeFireStoreListeners = () => {
+        Object.keys(this.unsubscribers).map(k => this.unsubscribers[k]())
+        this.unsubscribers = {}
     }
 
     async componentDidMount() {
-        /**
-         * ...
-         * */
+
+        // for(let i = 0; i < 180; i++) {
+        //     const docRef = await FireBase.firestore().collection('generalProofAnswers').add()
+        //     await docRef.set({
+        //         key: docRef.id,
+        //         questionKey: (i + 1),
+        //         questionDay: (i + 1) < 90 ? 1 : 2,
+        //         correctLetter: {},
+        //         counts: {}
+        //     })
+        // }
+
+        /** Auto update user settings */
+        const generalSettingsRef = FireBase.firestore().collection('generalSettings')
+        this.unsubscribers.generalSettingsUnsubscriber = generalSettingsRef.onSnapshot(this._doGetGeneralSettings)
+
+        /** Auto update general data */
+        const generalProofRef = FireBase.firestore().collection('generalProofs')
+        this.unsubscribers.generalProofUnsubscriber = generalProofRef.onSnapshot(this._doGetGeneralProof)
+        const generalProofAnswersRef = FireBase.firestore().collection('generalProofAnswers')
+        this.unsubscribers.generalProofAnswersUnsubscriber = generalProofAnswersRef.onSnapshot(this._doGetGeneralProofAnswers)
+
     }
 
     componentWillUnmount() {
-
-    }
-
-    reset = () => {
-        this.unsubscribers.map(u => u())
-        this.unsubscribers = []
-        this.setState({user: {key: undefined}})
+        this._removeFireStoreListeners()
     }
 
     asyncSetState = async state =>
         await new Promise(a => this.setState({...this.state, ...state, dirty: true}, a))
 
-    doOrAlert = async (toDo, errorMessage) => {
+    _doGetProfile = async ({user}) => {
+        let success = true
+        await this.asyncSetState({profileLoading: true})
+
         try {
-            await toDo()
+            const profile = {
+                key: user.uid,
+                name: NameUtils.getName(user),
+                firstName: NameUtils.getFirstName(user),
+                lastName: NameUtils.getLastName(user),
+                email: user.email,
+                photo: user.photoURL,
+            }
+
+            FireBase.analytics().setUserId(profile.key)
+            FireBase.analytics().setUserProperties({
+                en_name: profile.name,
+                en_email: profile.email,
+                en_photo: profile.photo,
+            })
+
+            const profileRef = FireBase.firestore().collection('profiles').doc(profile.key)
+            const snapshot = await profileRef.get()
+            if (snapshot.exists)
+                await profileRef.update(profile)
+            else
+                await profileRef.set(profile)
+
+            await this.asyncSetState({profile})
         } catch (e) {
-            !!errorMessage && Alert.showLongText(errorMessage)
-            console.warn('DataProvider:doOrAlert - Can\'t do task:', e)
+            console.warn("DataProvider:_doGetProfile - Error", e)
+            Alert.showLongText("Oops! Você está sem internet?")
+            success = false
         }
+
+        /**
+         * Exec once after user loads
+         * */
+        await this._doGetProof()
+        await this._doGetProofAnswers()
+
+        await this.asyncSetState({
+            profileLoading: false,
+            profileVersion: this.state.profileVersion + 1
+        })
+
+        return success
     }
 
-    doSetUser = async ({user}) => {
-        await this.asyncSetState({userLoading: true})
+    _doGetProof = async () => {
+        let success = true
+        await this.asyncSetState({proofLoading: true})
 
-        await this.doOrAlert(
-            async () => {
-                const _user = {
-                    key: user.uid,
-                    name: NameUtils.getName(user),
-                    firstName: NameUtils.getFirstName(user),
-                    lastName: NameUtils.getLastName(user),
-                    email: user.email,
-                    photo: user.photoURL,
+        try {
+            const proofRef = FireBase.firestore().collection('proofs').doc(this.state.profile.key)
+            const snapshot = await proofRef.get()
+            const proof = snapshot.data() || this.state.proof
+            await this.asyncSetState({proof})
+        } catch (e) {
+            console.warn("DataProvider:_doGetProof - Error", e)
+            Alert.showLongText("Oops! Você está sem internet?")
+            success = false
+        }
+
+        await this.asyncSetState({
+            proofLoading: false,
+            proofVersion: this.state.proofVersion + 1
+        })
+
+        return success
+    }
+
+    _doUpdateProof = async (proof) => {
+        let success = true
+        await this.asyncSetState({proofLoading: true})
+
+        try {
+            const proofRef = FireBase.firestore().collection('proofs').doc(this.state.profile.key)
+            await proofRef.update(proof)
+            await this.asyncSetState({proof: {...this.state.proof, ...proof}})
+        } catch (e) {
+            console.warn("DataProvider:_doUpdateProof - Error", e)
+            Alert.showLongText("Oops! Você está sem internet?")
+            success = false
+        }
+
+        await this.asyncSetState({
+            proofLoading: false,
+            proofVersion: this.state.proofVersion + 1
+        })
+
+        return success
+    }
+
+    _doGetProofAnswers = async () => {
+        let success = true
+        await this.asyncSetState({proofAnswersLoading: true})
+
+        try {
+            const proofAnswers = {}
+            const proofAnswersRef = FireBase.firestore().collection('proofAnswers').where('userKey', '==', this.state.profile.key)
+            const snapshots = await proofAnswersRef.get()
+            snapshots.forEach(snapshot => {
+                proofAnswers[snapshot.id] = {...snapshot.data(), key: snapshot.id}
+            })
+            await this.asyncSetState({proofAnswers})
+        } catch (e) {
+            console.warn("DataProvider:_doGetProofAnswers - Error", e)
+            Alert.showLongText("Oops! Você está sem internet?")
+            success = false
+        }
+
+        await this.asyncSetState({
+            proofAnswersLoading: false,
+            proofAnswersVersion: this.state.proofAnswersVersion + 1
+        })
+
+        return success
+    }
+
+    _doSaveProofAnswer = async (proofAnswer) => {
+        let success = true
+        await this.asyncSetState({proofAnswersLoading: true})
+
+        try {
+            if (proofAnswer.key) {
+                const proofAnswersRef = FireBase.firestore().collection('proofAnswers').doc(proofAnswer.key)
+                await proofAnswersRef.update(proofAnswer)
+                await this.asyncSetState({proofAnswers: {...this.state.proofAnswers, [proofAnswer.key]: proofAnswer}})
+            } else {
+                const proofAnswersRef = FireBase.firestore().collection('proofAnswers')
+                const documentRef = await proofAnswersRef.add()
+                const _proofAnswer = {
+                    key: documentRef.id,
+                    userKey: this.state.profile.key,
+                    ...proofAnswer,
                 }
+                await documentRef.update(_proofAnswer)
+                await this.asyncSetState({proofAnswers: {...this.state.proofAnswers, [_proofAnswer.key]: _proofAnswer}})
+            }
 
-                console.log("DataProvider:doSetUser - Sending current user details to analytics...")
-                FireBase.analytics().setUserId(_user.key)
-                FireBase.analytics().setUserProperties({
-                    le_name: _user.name,
-                    le_email: _user.email,
-                    le_photo: _user.photo,
-                })
+            // const generalProofAnswersRef = FireBase.firestore()
+            //     .collection('generalProofAnswers').where('questionKey', '==', proofAnswer.questionKey)
+            // const generalProofAnswersSnapshots = await generalProofAnswersRef.get()
+            // const color = proofAnswer.questionDay === 1 ? this.state.proof.firstColor : this.state.proof.secondColor
+            // generalProofAnswersSnapshots.forEach(async snapshot => {
+            //     await snapshot.ref.update({
+            //         counts: {
+            //             ...snapshot.data().counts,
+            //             [this.state.proofAnswers[proofAnswer.key].answerLetter + '_' + color]: (snapshot.data()[this.state.proofAnswers[proofAnswer.key].answerLetter + '_' + color] || 0) - (proofAnswer.key ? 1 : 0),
+            //             [proofAnswer.answerLetter + '_' + color]: (snapshot.data()[proofAnswer.answerLetter + '_' + color] || 0) + 1
+            //         }
+            //     })
+            // })
 
-                const userRef = FireBase.firestore().collection('users').doc(user.uid)
-                const snapshot = await userRef.get()
+        } catch (e) {
+            console.warn("DataProvider:_doSaveProofAnswer - Error", e)
+            Alert.showLongText("Oops! Você está sem internet?")
+            success = false
+        }
 
-                if (!snapshot.exists) {
-                    await userRef.set({
-                        ..._user,
-                        is_gnome: false,
-                        has_letter: false,
-                        has_letter_answer: false,
-                        letter: undefined,
-                        letter_answer: undefined,
-                        creationTimestamp: +new Date(),
-                        creationTimestampReverse: -+new Date(),
-                        lastAccessTimestamp: +new Date(),
-                        lastAccessTimestampReverse: -+new Date(),
-                    })
-                } else {
-                    await userRef.update({
-                        ..._user,
-                        lastAccessTimestamp: +new Date(),
-                        lastAccessTimestampReverse: -+new Date(),
-                    })
-                }
+        await this.asyncSetState({
+            proofAnswersLoading: false,
+            proofAnswersVersion: this.state.proofAnswersVersion + 1
+        })
 
-                const __user = await userRef.get()
-                await this.asyncSetState({user: __user.data()})
-
-                this.unsubscribers.push(userRef.onSnapshot(async doc => {
-                    console.log("DataProvider:doSetUser - Updating user automatically...")
-                    if (this.state.user.key === doc.id)
-                        await this.asyncSetState({user: doc.data()})
-                }))
-            },
-            'Oops, verifique sua conexão!'
-        )
-
-        await this.asyncSetState({userLoading: false})
+        return success
     }
 
-    doSetUserLetter = async ({letter}) => {
-        await this.asyncSetState({userLoading: true})
+    _doGetGeneralProof = async () => {
+        let success = true
+        await this.asyncSetState({generalProofLoading: true})
 
-        await this.doOrAlert(
-            async () => {
-                const _user = {
-                    ...this.state.user,
-                    has_letter: true,
-                    has_letter_answer: false,
-                    timestamp: +new Date(),
-                    letter: {
-                        ...this.state.user.letter,
-                        ...letter
-                    }
-                }
+        try {
+            let generalProof = {}
+            const generalProofRef = FireBase.firestore().collection('generalProofs')
+            const snapshots = await generalProofRef.get()
+            snapshots.forEach(snapshot => {
+                const gp = snapshot.data()
+                generalProof = {...generalProof, ...gp}
+            })
+            await this.asyncSetState({generalProof})
+        } catch (e) {
+            console.warn("DataProvider:_doGetGeneralProof - Error", e)
+            Alert.showLongText("Oops! Você está sem internet?")
+            success = false
+        }
 
-                console.log("DataProvider:doSetUserLetter - Sending user's letter to firebase...")
+        await this.asyncSetState({
+            generalProofLoading: false,
+            generalProofVersion: this.state.generalProofVersion + 1
+        })
 
-                const userRef = FireBase.firestore().collection('users').doc(_user.key)
-                await userRef.update(_user)
-                await this.asyncSetState({user: _user})
-
-                Alert.showLongText("Carta enviada!")
-            },
-            'Oops, será que você está sem internet?'
-        )
-
-        await this.asyncSetState({userLoading: false})
+        return success
     }
 
-    doSetUserLetterAnswer = async ({letterAnswer, user}) => {
-        await this.asyncSetState({userLoading: true})
+    _doGetGeneralProofAnswers = async () => {
+        let success = true
+        await this.asyncSetState({generalProofAnswersLoading: true})
 
-        await this.doOrAlert(
-            async () => {
-                const _user = {
-                    letter_answer: {
-                        ...letterAnswer
-                    },
-                    has_letter_answer: true,
-                }
+        try {
+            const generalProofAnswers = {}
+            const generalProofAnswersRef = FireBase.firestore().collection('generalProofAnswers')
+            const snapshots = await generalProofAnswersRef.get()
+            snapshots.forEach(snapshot => {
+                generalProofAnswers[snapshot.id] = {...snapshot.data(), key: snapshot.id}
+            })
+            await this.asyncSetState({generalProofAnswers})
 
-                console.log("DataProvider:doSetUserLetterAnswer - Sending user's letter answer to firebase...")
+        } catch (e) {
+            console.warn("DataProvider:_doGetGeneralProofAnswers - Error", e)
+            Alert.showLongText("Oops! Você está sem internet?")
+            success = false
+        }
 
-                const userRef = FireBase.firestore().collection('users').doc(user.key)
-                await userRef.update(_user)
-                Alert.showLongText("Resposta enviada!")
-            },
-            'Oops, será que você está sem internet?'
-        )
+        await this.asyncSetState({
+            generalProofAnswersLoading: false,
+            generalProofAnswersVersion: this.state.generalProofAnswersVersion + 1
+        })
 
-        await this.asyncSetState({userLoading: false})
+        return success
     }
 
-    doTransformUserInGnome = async () => {
-        await this.asyncSetState({userLoading: true})
+    _doGetGeneralSettings = async () => {
+        let success = true
+        await this.asyncSetState({generalSettingsLoading: true})
 
-        if (!this.state.user.is_gnome)
-            await this.doOrAlert(
-                async () => {
-                    const _user = {
-                        ...this.state.user,
-                        is_gnome: true,
-                    }
+        try {
+            let generalSettings = {}
+            const settingsRef = FireBase.firestore().collection('generalSettings')
+            const snapshots = await settingsRef.get()
+            snapshots.forEach(snapshot => {
+                const setts = snapshot.data()
+                generalSettings = {...generalSettings, ...setts}
+            })
+            await this.asyncSetState({generalSettings})
+        } catch (e) {
+            console.warn("DataProvider:_doGetGeneralSettings - Error", e)
+            Alert.showLongText("Oops! Você está sem internet?")
+            success = false
+        }
 
-                    console.log("DataProvider:doTransformUserInGnome - Transforming user in a gnome...")
+        await this.asyncSetState({
+            generalSettingsLoading: false,
+            generalSettingsVersion: this.state.generalSettingsVersion + 1
+        })
 
-                    const userRef = FireBase.firestore().collection('users').doc(_user.key)
-                    await userRef.update(_user)
-                    await this.asyncSetState({user: _user})
-                    FireBase.analytics().setUserProperty('le_is_gnome', '1')
-                    Alert.showLongText("Agora você é um gnomo!")
-                },
-                'Oops, será que você está sem internet?'
-            )
-
-        await this.asyncSetState({userLoading: false})
-    }
-
-    doFindLetter = async (offset = 0) => {
-        await this.asyncSetState({findLetterLoading: true})
-        let user = null
-
-        await this.doOrAlert(
-            async () => {
-                console.log("DataProvider:doFindLetter - Searching letter...")
-
-                const userRef = FireBase.firestore().collection('users')
-                    .orderBy('timestamp')
-                    .startAfter(offset)
-                    .where('has_letter', '==', true)
-                    .where('has_letter_answer', '==', false)
-                    .limit(2)
-                const snapshot = await userRef.get()
-                snapshot.forEach((ss) => {
-                    if (user === null && ss.id !== this.state.user.key)
-                        user = {...ss.data(), key: ss.id}
-                })
-
-                console.log("DataProvider:doFindLetter - letter found:", user)
-
-            },
-            'Oops, será que você está sem internet?'
-        )
-
-        await this.asyncSetState({findLetterLoading: false})
-        return user
+        return success
     }
 
     render() {

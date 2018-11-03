@@ -8,6 +8,7 @@ import IconButton from './IconButton'
 import QuestionItem from './QuestionItem'
 import FadeFromDown from './FadeFronDown'
 import SnowWrapper from './Snow'
+import AnswerItem from './AnswerItem'
 
 export {
     Box,
@@ -19,5 +20,6 @@ export {
     IconButton,
     QuestionItem,
     FadeFromDown,
-    SnowWrapper
+    SnowWrapper,
+    AnswerItem
 }

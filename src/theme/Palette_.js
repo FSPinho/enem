@@ -337,6 +337,7 @@ Object.keys(_colors).map(k => {
 
 console.log(colors)
 
+
 // (() => {
 //     models = document.querySelectorAll('#tools-for-picking-colors .module-module-module .module')
 //     colors = {}

@@ -1,4 +1,4 @@
-package com.cytech.letter;
+package com.cytech.enem;
 
 import android.os.Bundle;
 
@@ -14,7 +14,7 @@ public class MainActivity extends ReactActivity {
      */
     @Override
     protected String getMainComponentName() {
-        return "letter";
+        return "enem";
     }
 
     @Override

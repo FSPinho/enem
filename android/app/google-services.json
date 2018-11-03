@@ -1,35 +1,35 @@
 {
   "project_info": {
-    "project_number": "541750718688",
-    "firebase_url": "https://cytech-letter.firebaseio.com",
-    "project_id": "cytech-letter",
-    "storage_bucket": "cytech-letter.appspot.com"
+    "project_number": "258812612374",
+    "firebase_url": "https://cytech-enem.firebaseio.com",
+    "project_id": "cytech-enem",
+    "storage_bucket": "cytech-enem.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:541750718688:android:d30fb57b39944b81",
+        "mobilesdk_app_id": "1:258812612374:android:99e2043cd2c6c139",
         "android_client_info": {
-          "package_name": "com.cytech.letter"
+          "package_name": "com.cytech.enem"
         }
       },
       "oauth_client": [
         {
-          "client_id": "541750718688-lno44i0evn365d2pn9j5gocack3l05l4.apps.googleusercontent.com",
+          "client_id": "258812612374-fs14kq6v3dnrh2clsrovrbjc16j6fu6n.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.cytech.letter",
+            "package_name": "com.cytech.enem",
             "certificate_hash": "45fbc655ba04feee5a4ebb2bc38a144af06f9235"
           }
         },
         {
-          "client_id": "541750718688-u7gtjsqlsaohks99as3t1co1ejojvuh2.apps.googleusercontent.com",
+          "client_id": "258812612374-sf91t66v71o5hqigg90mpr3arjid895f.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBeeycL-IoiojRSQYdSzwt97bqj4r5mBJ8"
+          "current_key": "AIzaSyDA4rEGRcBOcHa3QVserEiqeARdPAJFP8Q"
         }
       ],
       "services": {
@@ -40,7 +40,7 @@
           "status": 2,
           "other_platform_oauth_client": [
             {
-              "client_id": "541750718688-u7gtjsqlsaohks99as3t1co1ejojvuh2.apps.googleusercontent.com",
+              "client_id": "258812612374-sf91t66v71o5hqigg90mpr3arjid895f.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

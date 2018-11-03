@@ -32,8 +32,7 @@ class ThemeProvider extends Component {
 
     async componentDidMount() {
         try {
-            console.log(await AsyncStorage.getAllKeys(), await AsyncStorage.getItem("le:theme"))
-            const light = (await AsyncStorage.getItem("le:theme")) === 'light'
+            const light = (await AsyncStorage.getItem("en:theme")) === 'light'
             await this.asyncSetState({light: light, theme: light ? LightTheme : DarkTheme})
         } catch (e) {
             console.log("ThemeProvider:componentDidMount - Can't get previous config. Setting to light theme.")
@@ -42,15 +41,15 @@ class ThemeProvider extends Component {
     }
 
     doEnableDark = async () => {
-        await AsyncStorage.setItem("le:theme", 'dark')
+        await AsyncStorage.setItem("en:theme", 'dark')
         await this.doChangeTheme(DarkTheme)
-        FireBase.analytics().logEvent(Events.LetterThemeEnableDark)
+        FireBase.analytics().logEvent(Events.ThemeEnableDark)
     }
 
     doEnableLight = async () => {
-        await AsyncStorage.setItem("le:theme", 'light')
+        await AsyncStorage.setItem("en:theme", 'light')
         await this.doChangeTheme(LightTheme)
-        FireBase.analytics().logEvent(Events.LetterThemeEnableLight)
+        FireBase.analytics().logEvent(Events.ThemeEnableLight)
     }
 
     doChangeTheme = async (theme) => {

@@ -40,10 +40,13 @@ class Header extends Component {
             <Box centralize>
                 <IconButton
                     onPress={theme.doToggleTheme}
-                    icon={theme.light ? 'weather-night' : 'weather-sunny'} iconComponent={'material-community'} flat/>
+                    primary
+                    icon={theme.light ? 'weather-night' : 'weather-sunny'}
+                    iconComponent={'material-community'}
+                    flat/>
                 <Spacer/>
                 <TouchableWithoutFeedback onPress={this.doSignOut}>
-                    <Image style={theme.styles.avatar} source={{uri: data.user.photo}}/>
+                    <Image style={theme.styles.avatar} source={{uri: data.profile.photo}}/>
                 </TouchableWithoutFeedback>
                 <Spacer/>
             </Box>
@@ -55,8 +58,8 @@ class Header extends Component {
 
 const styles = theme => StyleSheet.create({
     avatar: {
-        width: 36,
-        height: 36,
+        width: 24,
+        height: 24,
         borderRadius: 192
     }
 })

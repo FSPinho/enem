@@ -1,148 +1,135 @@
 import React from 'react'
-import {StyleSheet, Image} from 'react-native'
-import {withTheme} from "../theme";
+import {FlatList, StyleSheet, Picker} from 'react-native'
+import {withTheme, Palette} from "../theme";
 import withData from "../api/withData";
-import Loading from "../components/Loading";
-import Box from "../components/Box";
-import Line from "../components/Line";
+import {Box, Loading, AnswerItem} from "../components";
 import FireBase from 'react-native-firebase'
 import {Events} from "../constants/Analytics";
-import Text from "../components/Text";
-import Button from "../components/Button";
-import {Routes} from "../navigation/RootNavigation";
+import {mapToArray} from "../services/ArrayUtils";
 import Spacer from "../components/Spacer";
+import Text from "../components/Text";
 
 
 class Home extends React.Component {
 
+    constructor(props) {
+        super(props)
+
+        this.state = {
+            firstColor: 'AMARELO',
+            secondColor: 'AMARELO',
+        }
+    }
+
     componentDidMount() {
         console.log("Home:componentDidMount - Sending current screen to analytics...")
-        FireBase.analytics().logEvent(Events.LetterSessionStart)
-        FireBase.analytics().logEvent(Events.LetterOpenHome)
-
-        // this.props.navigation.navigate(Routes.LetterFinder)
-    }
-
-    _doOpenLetterEditor = () => {
-        this.props.navigation.navigate(Routes.LetterEditor)
-    }
-
-    _doOpenLetterFinder = () => {
-        this.props.navigation.navigate(Routes.LetterFinder)
+        FireBase.analytics().logEvent(Events.SessionStart)
+        FireBase.analytics().logEvent(Events.OpenHome)
     }
 
     componentWillUnmount() {
-        FireBase.analytics().logEvent(Events.LetterSessionEnd)
+        FireBase.analytics().logEvent(Events.SessionEnd)
     }
 
     render() {
+        const {firstColor, secondColor} = this.state
         const {data, theme} = this.props
-        const {styles} = theme
+        const {generalProofAnswers} = data
+        const listData = mapToArray(generalProofAnswers)
+            .filter(q => q.questionDay === 1 ? firstColor : secondColor)
+            .sort((a, b) => a.questionKey - b.questionKey)
+        const {colors} = data.generalProof
 
-        const isGnome = !!data.user.is_gnome
-        const hasLetter = !!data.user.has_letter
-        const hasAnswer = !!data.user.has_letter_answer
+        let accepted = 0
+        let rejected = 0
 
-        const answer = data.user.letter_answer
+        listData.map(q => {
+            const {correctLetter, questionKey} = q
+            const color = q.questionDay === 1 ? firstColor : secondColor
+            const _correctLetter = (correctLetter && correctLetter[color]) ? correctLetter[color] : ''
+            let _answer = undefined
+            let _answerLetter = '--'
+            Object.keys(data.proofAnswers).map(k => {
+                const ans = data.proofAnswers[k]
+                if (ans.questionKey === questionKey) {
+                    _answer = ans
+                    _answerLetter = ans.answerLetter
+                }
+            })
+            if (_answer && _answerLetter !== '--') {
+                if (_answerLetter === _correctLetter)
+                    accepted++
+                else
+                    rejected++
+            }
+        })
+
+
+        console.log("Home:render - Rendering...")
 
         return (
             <Box secondary fit column>
-                <Loading active={data.userLoading} size={56}>
-                    <Box scroll>
-                        <Box column fit padding>
-
-                            <Box paper primary column>
-
-                                <Box>
-                                    <Image style={styles.cardMedia}
-                                           source={require('../resources/images/banner-01.png')}/>
-                                </Box>
-                                <Box padding column>
-                                    <Text
-                                        weight={'700'}
-                                        size={20}
-                                        color={theme.palette.primary}>
-                                        {
-                                            hasAnswer ? 'Sua carta foi respondida!'
-                                                : hasLetter ? 'Sua carta foi enviada!'
-                                                : 'Escreva uma carta para o papai noel'
-                                        }
-                                    </Text>
-
-                                    <Spacer/>
-
-                                    {
-                                        !!hasAnswer && (
-                                            <Text weight={'900'} secondary>O Gnomo {answer.name} respondeu:</Text>
-                                        )
-                                    }
-                                    <Text secondary>
-                                        {
-                                            hasAnswer ? answer.message
-                                                : hasLetter ? 'Os Gnomos estão tirando uma soneca... Às vezes eles fazem isso! Logo as Renas irão acordá-los, e então começarão a responder as cartas ;)'
-                                                : 'Sua carta será lida por Gnomos especializados de todo o mundo =)'
-                                        }
-                                    </Text>
-                                </Box>
-                                <Line/>
-                                <Box paddingSmall justifyEnd>
-                                    <Button flat primary
-                                            onPress={this._doOpenLetterEditor}
-                                            children={
-                                                hasAnswer ? 'ESCREVER OUTRA CARTA'
-                                                    : hasLetter ? 'EDITAR CARTA'
-                                                    : 'ESCREVER CARTA'
-                                            }/>
-                                </Box>
+                <Box padding primary centralize style={{elevation: 2}}>
+                    <Loading active={data.proofAnswersLoading} size={16}>
+                        <Box fit centralize>
+                            <Box fit centralize>
+                                <Text>Acertos:</Text>
+                                <Spacer/>
+                                <Text weight={'900'} size={18} color={theme.palette.primary}>
+                                    {accepted} ({(accepted/180 * 100).toFixed(2)}%)
+                                </Text>
                             </Box>
-
-                            <Spacer vertical large/>
-
-                            <Box paper primary column>
-
-                                <Box>
-                                    <Image style={styles.cardMedia}
-                                           source={require('../resources/images/banner-02.png')}/>
-                                </Box>
-                                <Box padding column>
-                                    <Text
-                                        weight={'700'}
-                                        size={20}
-                                        color={theme.palette.primary}>
-                                        {isGnome ? 'Ajudar a responder cartas' : 'Quero ser um Gnomo oficial do Papai Noel'}
-                                    </Text>
-
-                                    <Spacer/>
-
-                                    <Text secondary>
-                                        {isGnome ? 'Cumpra seu papel como Gnomo e ajude a responder cartas!'
-                                            : 'Os Gnomos recebem muitas mensagens todo ano. Torne-se um deles e ajude a responder cartas =D'}
-                                    </Text>
-                                </Box>
-                                <Line/>
-                                <Box paddingSmall justifyEnd>
-                                    <Button onPress={this._doOpenLetterFinder}
-                                            flat primary
-                                            children={isGnome ? 'RESPONDER CARTAS' : 'ME TORNAR UM GNOMO'}/>
-                                </Box>
-
+                            <Spacer/>
+                            <Box fit centralize>
+                                <Text>Erros:</Text>
+                                <Spacer/>
+                                <Text weight={'900'} size={18} color={Palette.Red}>
+                                    {rejected} ({(rejected/180 * 100).toFixed(2)}%)
+                                </Text>
                             </Box>
-
                         </Box>
-                    </Box>
+                    </Loading>
+                </Box>
+                <Loading active={data.profileLoading} size={56}>
+                    <FlatList
+                        ListHeaderComponent={
+                            <Box paddingSmall fit column>
+                                <Box paddingSmall paper primary fit>
+                                    <Picker
+                                        selectedValue={firstColor}
+                                        style={{flex: 1}}
+                                        onValueChange={value => this.setState({firstColor: value})}>
+                                        <Picker.Item label={'Cor da 1ª prova'} value={''}/>
+                                        {colors.map(c => (<Picker.Item key={c} label={c} value={c}/>))}
+                                    </Picker>
+                                    <Spacer/>
+                                    <Picker
+                                        selectedValue={secondColor}
+                                        style={{flex: 1}}
+                                        onValueChange={value => this.setState({secondColor: value})}>
+                                        <Picker.Item label={'Cor da 2ª prova'} value={''}/>
+                                        {colors.map(c => (<Picker.Item key={c} label={c} value={c}/>))}
+                                    </Picker>
+                                </Box>
+                            </Box>
+                        }
+                        ListFooterComponent={<Spacer vertical/>}
+                        ListEmptyComponent={
+                            <Box padding centralize>
+                                <Text center secondary>Este gabarito não é oficial! As questões foram respondidas
+                                    pelos nossos professores após a prova.</Text>
+                            </Box>
+                        }
+                        data={listData}
+                        renderItem={({item}) => <AnswerItem color={item.questionDay === 1 ? firstColor : secondColor}
+                                                            answer={item}/>}
+                    />
                 </Loading>
             </Box>
         )
     }
 }
 
-const styles = theme => StyleSheet.create({
-    cardMedia: {
-        height: 162,
-        flex: 1,
-        borderTopLeftRadius: theme.metrics.borderRadius,
-        borderTopRightRadius: theme.metrics.borderRadius,
-    }
-})
+const styles = theme => StyleSheet.create({})
 
 export default withData(withTheme(styles, Home))
